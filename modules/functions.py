@@ -1,8 +1,12 @@
+import os
+
 from astropy.table import Table, unique
 import astropy.units as u
 
 from modules.telescope_params import westerbork
 
+
+dir = os.path.dirname(__file__)
 
 HI_restfreq = 1420405751.77 * u.Hz
 optical_HI = u.doppler_optical(HI_restfreq)
@@ -17,8 +21,8 @@ def get_taskids(field):
     :return:
     """
 
-    observations = Table.read('../data/obscensus.csv', comment='#')
-    processed = Table.read('../data/pointings.dat', format='ascii')
+    observations = Table.read(dir + '/../data/obscensus.csv', comment='#')
+    processed = Table.read(dir + '/../data/pointings.dat', format='ascii')
 
     taskids = observations[observations['name'] == field]['taskID']
     processed_ids = unique(processed[processed['field'] == field], keys='0taskID')['0taskID']
