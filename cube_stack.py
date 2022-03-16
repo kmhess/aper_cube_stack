@@ -47,6 +47,8 @@ else:
     beams = [int(b) for b in args.beams.split(',')]
 c = cubes[0]
 
+package_dir = os.path.dirname(__file__)
+
 # Find out what taskids contribute to cube
 taskids, processed_ids = get_taskids(field)
 
@@ -54,6 +56,10 @@ taskids, processed_ids = get_taskids(field)
 if len(taskids) == len(processed_ids):
     print("\tTASKIDS: {}".format(taskids))
     if len(taskids) > 1:
+        # Find field center for a given pointing (work even with potentially legacy files):
+        master_list = ascii.read(package_dir + '/data/apertif_v12.21apr06.txt', format='fixed_width')
+        pointing, entry = next(([s, m] for s, m in zip(master_list['name'], master_list) if field[1:] in s), None)
+        barycent_pos = SkyCoord(ra=entry['ra'], dec=entry['dec'], unit='deg')
         for b in beams:
             # Calculate barycentric shifts for each cube
             delta_chan = []
@@ -77,7 +83,7 @@ if len(taskids) == len(processed_ids):
                     time = Time(header['DATE-OBS'])
                     spec_coord = SpectralCoord(header['CRVAL3'], unit='Hz',
                                                observer=westerbork().get_itrs(obstime=time),
-                                               target=beam_pos)
+                                               target=barycent_pos)
                     bary_spec_coord = spec_coord.with_observer_stationary_relative_to('icrs')
                     delta_crval3 = spec_coord - bary_spec_coord
                     # hdu[0].header['CRVAL3'] = bary_spec_coord.value
