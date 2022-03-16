@@ -69,7 +69,7 @@ def main(template_im, beam, pb_root_dir='', output=''):
     d_beam_cube = d_new * cb_reprojected
     cb_reprojected = np.float32(d_beam_cube)
 
-    hdu = fits.PrimaryHDU(data=cb_reprojected, header=temp_header)
+    hdu = fits.PrimaryHDU(data=cb_reprojected, header=temp_header, overwrite=True)
 
     if (not output) and ('_image.fits' in template_im):
         output = template_im[:-11] + '_pb.fits'
