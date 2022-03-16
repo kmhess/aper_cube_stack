@@ -45,6 +45,7 @@ if '-' in args.beams:
     beams = np.array(range(int(b_range[1]) - int(b_range[0]) + 1)) + int(b_range[0])
 else:
     beams = [int(b) for b in args.beams.split(',')]
+c = cubes[0]
 
 # Find out what taskids contribute to cube
 taskids, processed_ids = get_taskids(field)
@@ -52,15 +53,15 @@ taskids, processed_ids = get_taskids(field)
 # taskids = ['190913045','191207034','200302074']
 if len(taskids) == len(processed_ids):
     print("\tTASKIDS: {}".format(taskids))
-    for b in beams:
-        for c in cubes:
+    if len(taskids) > 1:
+        for b in beams:
             # Calculate barycentric shifts for each cube
             delta_chan = []
             new_crval3 = []
             for t in taskids:
                 # Get info from the header
                 filename = str(t) + '/B0' + str(b).zfill(2) + '/HI_image_cube' + str(c) + '.fits'
-                hdu = fits.open(filename, mode='update')
+                hdu = fits.open(filename)
                 header = hdu[0].header
                 if t == taskids[0]:
                     beam_pos = SkyCoord(ra=header['CRVAL1'], dec=header['CRVAL2'], unit='deg', frame='fk5')
@@ -123,17 +124,25 @@ if len(taskids) == len(processed_ids):
             # Make a new directory if it doesn't already exist:
             if not os.path.isdir(field):
                 os.system('mkdir {}'.format(field))
-            if not os.path.isdir(field + '/B0' + str(b).zfill(2)):
-                os.system('mkdir ' + field + '/B0' + str(b).zfill(2))
+            # if not os.path.isdir(field + '/B0' + str(b).zfill(2)):
+            #     os.system('mkdir ' + field + '/B0' + str(b).zfill(2))
 
             # Write new cube & save in a logical place
             header['CRVAL3'] = np.array(new_crval3)[skip_chans == 0.][0]
             header['NAXIS3'] = n_chans
             hdu = fits.PrimaryHDU(data=combo_cube2, header=header)
             tic1 = testtime.perf_counter()
-            hdu.writeto(field + '/B0' + str(b).zfill(2) + '/HI_image_cube' + str(c) + '.fits', overwrite=True)
+            hdu.writeto(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits', overwrite=True)
             toc1 = testtime.perf_counter()
             print(f"Do write: {toc1 - tic1:0.4f} seconds")
+    else:
+        print("\tOnly one taskid.  Copying to a folder with the field naming scheme.")
+        # Make a new directory if it doesn't already exist:
+        if not os.path.isdir(field):
+            os.system('mkdir {}'.format(field))
+        # if not os.path.isdir(field + '/B0' + str(b).zfill(2)):
+        #     os.system('mkdir ' + field + '/B0' + str(b).zfill(2))
+        os.system('cp ' + filename + ' ' + field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits')
 
 else:
     print("\tNot all the data sets have been processed for this field: {}.".format(field))
