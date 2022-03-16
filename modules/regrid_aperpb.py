@@ -19,10 +19,10 @@ def parse_args():
                         help='Specify a range (0-39) or list (3,5,7,11) of beams on which to do source finding (default: %(default)s).')
 
     parser.add_argument('-p', '--pb_root_dir', default=None,
-                        help='Specify the input taskid (default: %(default)s).')
+                        help='Specify the root directory where the primary beam models are located (default: %(default)s).')
 
     parser.add_argument('-o', '--output', default=None,
-                        help='Specify the input taskid (default: %(default)s).')
+                        help='Specify the output (default: appends "_pb.fits" to input).')
 
     # Parse the arguments above
     arguments = parser.parse_args()
@@ -72,7 +72,7 @@ def main(template_im, beam, pb_root_dir='', output=''):
     hdu = fits.PrimaryHDU(data=cb_reprojected, header=temp_header)
 
     if (not output) and ('_image.fits' in template_im):
-        output = template_im[-11] + '_pb.fits'
+        output = template_im[:-11] + '_pb.fits'
     elif (not output):
         output = template_im[:-5] + '_pb.fits'
 
