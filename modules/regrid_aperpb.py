@@ -76,7 +76,7 @@ def main(template_im, beam, pb_root_dir='', output=''):
     elif (not output):
         output = template_im[:-5] + '_pb.fits'
 
-    hdu.writeto(output)
+    hdu.writeto(output, overwrite=True)
 
     return
 
