@@ -60,15 +60,18 @@ if len(taskids) == len(processed_ids):
         master_list = ascii.read(package_dir + '/data/apertif_v12.21apr06.txt', format='fixed_width')
         pointing, entry = next(([s, m] for s, m in zip(master_list['name'], master_list) if field[1:] in s), None)
         barycent_pos = SkyCoord(ra=entry['ra'], dec=entry['dec'], unit='deg')
+        time = []
         for b in beams:
             # Calculate barycentric shifts for each cube
             delta_chan = []
             new_crval3 = []
-            for t in taskids:
+            for ii, t in enumerate(taskids):
                 # Get info from the header
                 filename = str(t) + '/B0' + str(b).zfill(2) + '/HI_image_cube' + str(c) + '.fits'
                 hdu = fits.open(filename)
                 header = hdu[0].header
+                if b == beams[0]:
+                    time.append(Time(header['DATE-OBS']))
                 if t == taskids[0]:
                     beam_pos = SkyCoord(ra=header['CRVAL1'], dec=header['CRVAL2'], unit='deg', frame='fk5')
                     cdelt3 = header['CDELT3']
@@ -80,9 +83,8 @@ if len(taskids) == len(processed_ids):
                 else:
                     print("\tAssuming cube is in topecentric reference frame; transforming to barycentric")
                     # Calculate barycentric correction
-                    time = Time(header['DATE-OBS'])
                     spec_coord = SpectralCoord(header['CRVAL3'], unit='Hz',
-                                               observer=westerbork().get_itrs(obstime=time),
+                                               observer=westerbork().get_itrs(obstime=time[ii]),
                                                target=barycent_pos)
                     bary_spec_coord = spec_coord.with_observer_stationary_relative_to('icrs')
                     delta_crval3 = spec_coord - bary_spec_coord
