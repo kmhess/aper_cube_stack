@@ -140,9 +140,11 @@ if (len(taskids) == len(processed_ids)) or args.force:
             # Write new cube & save in a logical place
             header['CRVAL3'] = np.array(new_crval3)[skip_chans == 0.][0]
             header['NAXIS3'] = n_chans
-            hdu = fits.PrimaryHDU(data=combo_cube2, header=header)
+            header['SPECSYS'] = 'BARYCENT'
+            header['CTYPE3'] = 'FREQ'
+            hdu_new = fits.PrimaryHDU(data=combo_cube2, header=header)
             tic1 = testtime.perf_counter()
-            hdu.writeto(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits', overwrite=True)
+            hdu_new.writeto(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits', overwrite=True)
             toc1 = testtime.perf_counter()
             print(f"Do write: {toc1 - tic1:0.4f} seconds")
 
