@@ -32,6 +32,9 @@ parser.add_argument('-b', '--beams', default='34',
 parser.add_argument('-c', '--cubes', default='2',
                     help='Specify the cubes on which to do source finding (default: %(default)s).')
 
+parser.add_argument('-force', '--force',
+                    help='Force creation of barycent corrected cubes even if not all observations have been processed.',
+                    action='store_true')
 
 ###################################################################
 
