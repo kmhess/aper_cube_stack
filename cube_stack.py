@@ -53,12 +53,14 @@ package_dir = os.path.dirname(__file__)
 taskids, processed_ids = get_taskids(field)
 
 # taskids = ['190913045','191207034','200302074']
-if len(taskids) == len(processed_ids):
+if (len(taskids) == len(processed_ids)) or args.force:
     print("\tTASKIDS: {}".format(taskids))
-    if len(taskids) > 1:
+    print("\tPROCESSED TASKIDS: {}".format(processed_ids))
+    if len(processed_ids) > 1:
         # Find field center for a given pointing (work even with potentially legacy files):
         master_list = ascii.read(package_dir + '/data/apertif_v12.21apr06.txt', format='fixed_width')
         pointing, entry = next(([s, m] for s, m in zip(master_list['name'], master_list) if field[1:] in s), None)
+        # Assign the bary center based on the center of the pointing itself (always beam 0 saved in files)
         barycent_pos = SkyCoord(ra=entry['ra'], dec=entry['dec'], unit='deg')
         time = []
         for b in beams:
@@ -73,9 +75,8 @@ if len(taskids) == len(processed_ids):
                 if b == beams[0]:
                     time.append(Time(header['DATE-OBS']))
                 if t == taskids[0]:
-                    beam_pos = SkyCoord(ra=header['CRVAL1'], dec=header['CRVAL2'], unit='deg', frame='fk5')
+                    # beam_pos = SkyCoord(ra=header['CRVAL1'], dec=header['CRVAL2'], unit='deg', frame='fk5')
                     cdelt3 = header['CDELT3']
-
                 # Build in a check if the header is already in BARYCENT!
                 if hdu[0].header['SPECSYS'] == 'BARYCENT':
                     print("\tCube already in barycentric reference frame, continuing.")
@@ -132,8 +133,6 @@ if len(taskids) == len(processed_ids):
             # Make a new directory if it doesn't already exist:
             if not os.path.isdir(field):
                 os.system('mkdir {}'.format(field))
-            # if not os.path.isdir(field + '/B0' + str(b).zfill(2)):
-            #     os.system('mkdir ' + field + '/B0' + str(b).zfill(2))
 
             # Write new cube & save in a logical place
             header['CRVAL3'] = np.array(new_crval3)[skip_chans == 0.][0]
@@ -143,14 +142,49 @@ if len(taskids) == len(processed_ids):
             hdu.writeto(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits', overwrite=True)
             toc1 = testtime.perf_counter()
             print(f"Do write: {toc1 - tic1:0.4f} seconds")
+
+    elif len(processed_ids) == 1:
+        print("\tOnly one taskid.  Doing barycent correction & writing to a folder with the field naming scheme.")
+        # Find field center for a given pointing (work even with potentially legacy files):
+        master_list = ascii.read(package_dir + '/data/apertif_v12.21apr06.txt', format='fixed_width')
+        pointing, entry = next(([s, m] for s, m in zip(master_list['name'], master_list) if field[1:] in s), None)
+        barycent_pos = SkyCoord(ra=entry['ra'], dec=entry['dec'], unit='deg')
+        for b in beams:
+            # Get info from the header
+            filename = str(processed_ids[0]) + '/B0' + str(b).zfill(2) + '/HI_image_cube' + str(c) + '.fits'
+            hdu = fits.open(filename)
+            header = hdu[0].header
+            if b == beams[0]:
+                time = Time(header['DATE-OBS'])
+            # Build in a check if the header is already in BARYCENT!
+            if hdu[0].header['SPECSYS'] == 'BARYCENT':
+                print("\tCube already in barycentric reference frame, continuing.")
+                # Make a new directory if it doesn't already exist:
+                if not os.path.isdir(field):
+                    os.system('mkdir {}'.format(field))
+                    os.system('cp ' + filename + ' ' + field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) +
+                              '_image.fits')
+            else:
+                print("\tAssuming cube is in topecentric reference frame; transforming to barycentric")
+                # Calculate barycentric correction
+                spec_coord = SpectralCoord(header['CRVAL3'], unit='Hz', observer=westerbork().get_itrs(obstime=time),
+                                           target=barycent_pos)
+                bary_spec_coord = spec_coord.with_observer_stationary_relative_to('icrs')
+                header['CRVAL3'] = bary_spec_coord.value
+                header['SPECSYS'] = 'BARYCENT'
+                header['CTYPE3'] = 'FREQ'
+
+                if not os.path.isdir(field):
+                    os.system('mkdir {}'.format(field))
+                hdu_new = fits.PrimaryHDU(data=hdu[0].data, header=header)
+                tic1 = testtime.perf_counter()
+                hdu_new.writeto(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits', overwrite=True)
+                toc1 = testtime.perf_counter()
+                print(f"Do write: {toc1 - tic1:0.4f} seconds")
+            hdu.close()
+
     else:
-        print("\tOnly one taskid.  Copying to a folder with the field naming scheme.")
-        # Make a new directory if it doesn't already exist:
-        if not os.path.isdir(field):
-            os.system('mkdir {}'.format(field))
-        # if not os.path.isdir(field + '/B0' + str(b).zfill(2)):
-        #     os.system('mkdir ' + field + '/B0' + str(b).zfill(2))
-        os.system('cp ' + filename + ' ' + field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits')
+        print("\tNo data processed yet for this field: {}.".format(field))
 
 else:
     print("\tNot all the data sets have been processed for this field: {}.".format(field))
