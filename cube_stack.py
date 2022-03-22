@@ -55,6 +55,7 @@ package_dir = os.path.dirname(__file__)
 # Find out what taskids contribute to cube
 taskids, processed_ids = get_taskids(field)
 cdelt3 = 0
+all_nan = True
 
 if (len(taskids) == len(processed_ids)) or args.force:
     print("\tTASKIDS: {}".format(taskids))
@@ -79,6 +80,7 @@ if (len(taskids) == len(processed_ids)) or args.force:
                     hdu = fits.open(filename)
                     # hdu = fits.open(filename[:-5] + '_test.fits', mode=update)
                     print("\tFound cube {} for {} beam {:02}".format(c, t, b))
+                    all_nan = False
                 except FileNotFoundError:
                     print('\t{} has no cube {} for beam {:02}'.format(t, c, b))
                     new_crval3.append(np.nan)
@@ -110,6 +112,11 @@ if (len(taskids) == len(processed_ids)) or args.force:
                 # Calculate int(channel shift)
                 new_crval3.append(bary_spec_coord.value)
                 delta_chan.append(np.round(np.array(delta_crval3.value) / cdelt3))
+
+            # Skip beam if there is no contributing data from any taskids
+            if all_nan == True:
+                print("\tNo data for beam {:02} in any taskid covering field {}.".format(b, field))
+                continue
 
             # Create subcubes
             n_chans = int(header['NAXIS3'] - np.abs(np.nanmin(delta_chan)-np.nanmax(delta_chan)))
