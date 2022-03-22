@@ -54,8 +54,8 @@ package_dir = os.path.dirname(__file__)
 
 # Find out what taskids contribute to cube
 taskids, processed_ids = get_taskids(field)
+cdelt3 = 0
 
-# taskids = ['190913045','191207034','200302074']
 if (len(taskids) == len(processed_ids)) or args.force:
     print("\tTASKIDS: {}".format(taskids))
     print("\tPROCESSED TASKIDS: {}".format(processed_ids))
@@ -65,7 +65,8 @@ if (len(taskids) == len(processed_ids)) or args.force:
         pointing, entry = next(([s, m] for s, m in zip(master_list['name'], master_list) if field[1:] in s), None)
         # Assign the bary center based on the center of the pointing itself (always beam 0 saved in files)
         barycent_pos = SkyCoord(ra=entry['ra'], dec=entry['dec'], unit='deg')
-        time = []
+        time = [None] * len(processed_ids)
+        data_all = []
         for b in beams:
             # Calculate barycentric shifts for each cube
             delta_chan = []
@@ -73,12 +74,20 @@ if (len(taskids) == len(processed_ids)) or args.force:
             for ii, t in enumerate(taskids):
                 # Get info from the header
                 filename = str(t) + '/B0' + str(b).zfill(2) + '/HI_image_cube' + str(c) + '.fits'
-                hdu = fits.open(filename)
+                try:
+                    os.system('cp {} {}_test.fits'.format(filename, filename[:-5]))
+                    hdu = fits.open(filename)
+                    # hdu = fits.open(filename[:-5] + '_test.fits', mode=update)
+                    print("\tFound cube {} for {} beam {:02}".format(c, t, b))
+                except FileNotFoundError:
+                    print('\t{} has no cube {} for beam {:02}'.format(t, c, b))
+                    new_crval3.append(np.nan)
+                    delta_chan.append(np.nan)
+                    continue
                 header = hdu[0].header
-                if b == beams[0]:
-                    time.append(Time(header['DATE-OBS']))
-                if t == taskids[0]:
-                    # beam_pos = SkyCoord(ra=header['CRVAL1'], dec=header['CRVAL2'], unit='deg', frame='fk5')
+                if time[ii] == None:
+                    time[ii] = Time(header['DATE-OBS'])
+                if cdelt3 == 0.0:
                     cdelt3 = header['CDELT3']
                 # Build in a check if the header is already in BARYCENT!
                 if hdu[0].header['SPECSYS'] == 'BARYCENT':
@@ -103,23 +112,27 @@ if (len(taskids) == len(processed_ids)) or args.force:
                 delta_chan.append(np.round(np.array(delta_crval3.value) / cdelt3))
 
             # Create subcubes
-            n_chans = int(header['NAXIS3'] - np.abs(np.min(delta_chan)-np.max(delta_chan)))
-            skip_chans = delta_chan - np.min(delta_chan)
-            combo_cube = np.empty((int(n_chans), header['NAXIS2'], header['NAXIS2']))
+            n_chans = int(header['NAXIS3'] - np.abs(np.nanmin(delta_chan)-np.nanmax(delta_chan)))
+            skip_chans = delta_chan - np.nanmin(delta_chan)
+            nan_cube = np.empty((int(n_chans), header['NAXIS2'], header['NAXIS2'])) * np.nan
 
             tic = testtime.perf_counter()
             data_all = []
             rms = []
             # Calculate noise, weight for each cube
             for j, t in zip(skip_chans, taskids):
-                data_all.append(fits.getdata(str(t) + '/B0' + str(b).zfill(2) + '/HI_image_cube' + str(c) +
-                                             '.fits')[int(j):int(j+n_chans), :, :])
-                rms.append(da.nanstd(da.array(data_all)[-1, :, :, :], axis=(1, 2)).compute())
-
-                # Write noise, weight as a function of channel to a text file for each cube.
-                ascii.write([list(range(int(j), int(j)+n_chans)), np.array(rms)[-1, :]],
-                            str(t) + '/B0' + str(b).zfill(2) + '/noise.txt',
-                            names=['chan', 'noise'], overwrite=True)
+                try:
+                    data_all.append(fits.getdata(str(t) + '/B0' + str(b).zfill(2) + '/HI_image_cube' + str(c) +
+                                                 '.fits')[int(j):int(j+n_chans), :, :])
+                    rms.append(da.nanstd(da.array(data_all)[-1, :, :, :], axis=(1, 2)).compute())
+                    # Write noise, weight as a function of channel to a text file for each cube.
+                    ascii.write([list(range(int(j), int(j) + n_chans)), np.array(rms)[-1, :]],
+                                str(t) + '/B0' + str(b).zfill(2) + '/noise.txt',
+                                names=['chan', 'noise'], overwrite=True)
+                except FileNotFoundError:
+                    # Fill with nan values if the beam cube doesn't exist.
+                    data_all.append(nan_cube)
+                    rms.append(da.std(da.array(data_all)[-1, :, :, :], axis=(1, 2)).compute())
 
             data_all = np.array(data_all)
             rms = np.array(rms)
@@ -129,7 +142,7 @@ if (len(taskids) == len(processed_ids)) or args.force:
             dataweight = data_all.transpose()*weights.transpose()
             num = da.nansum(dataweight.transpose(), axis=0)
             denom = da.nansum(weights, axis=0)
-            combo_cube2 = (num.transpose()/denom).compute().transpose()
+            combo_cube = (num.transpose()/denom).compute().transpose()
             toc = testtime.perf_counter()
             print(f"Do median: {toc - tic:0.4f} seconds")
 
@@ -142,7 +155,7 @@ if (len(taskids) == len(processed_ids)) or args.force:
             header['NAXIS3'] = n_chans
             header['SPECSYS'] = 'BARYCENT'
             header['CTYPE3'] = 'FREQ'
-            hdu_new = fits.PrimaryHDU(data=combo_cube2, header=header)
+            hdu_new = fits.PrimaryHDU(data=combo_cube, header=header)
             tic1 = testtime.perf_counter()
             hdu_new.writeto(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits', overwrite=True)
             toc1 = testtime.perf_counter()
@@ -157,7 +170,12 @@ if (len(taskids) == len(processed_ids)) or args.force:
         for b in beams:
             # Get info from the header
             filename = str(processed_ids[0]) + '/B0' + str(b).zfill(2) + '/HI_image_cube' + str(c) + '.fits'
-            hdu = fits.open(filename)
+            try:
+                hdu = fits.open(filename)
+                print("\tFound cube {} for {} beam {:02}".format(c, t, b))
+            except FileNotFoundError:
+                print('\t{} has no cube {} for beam {:02}'.format(t, c, b))
+                continue
             header = hdu[0].header
             if b == beams[0]:
                 time = Time(header['DATE-OBS'])
