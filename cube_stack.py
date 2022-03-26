@@ -5,7 +5,6 @@ import os
 from astropy.coordinates import SkyCoord, SpectralCoord
 from astropy.io import fits, ascii
 from astropy.time import Time
-import astropy.units as u
 import numpy as np
 import dask.array as da
 
@@ -14,6 +13,9 @@ import time as testtime
 from modules.functions import get_taskids, get_common_spectrum
 from modules.telescope_params import westerbork
 
+
+# Doesn't seem to catch the errors from dask. :/
+np.seterr(divide='ignore', invalid='ignore')
 
 ###################################################################
 
@@ -72,6 +74,7 @@ if (len(taskids) == len(processed_ids)) or args.force:
         # Find common spectrum across all beams for a field.
         delta_chan, new_crval3, naxis2, naxis3 = get_common_spectrum(barycent_pos, processed_ids, c)
 
+        print("\tCreate barycentric corrected cubes for the specified beams.")
         for b in beams:
             # Create subcubes
             n_chans = int(naxis3 - np.abs(np.nanmin(delta_chan)-np.nanmax(delta_chan)))
@@ -101,7 +104,7 @@ if (len(taskids) == len(processed_ids)) or args.force:
                     rms.append(da.std(da.array(data_all)[-1, :, :, :], axis=(1, 2)).compute())
 
             # Skip beam if there is no contributing data from any taskids
-            if all_nan == True:
+            if all_nan:
                 print("\tNo data for beam {:02} in any taskid covering field {}.".format(b, field))
                 continue
 
@@ -134,6 +137,7 @@ if (len(taskids) == len(processed_ids)) or args.force:
             tic1 = testtime.perf_counter()
             hdu_new.writeto(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits', overwrite=True)
             toc1 = testtime.perf_counter()
+            print("\tFinished field {} beam {}.".format(field, b))
             print(f"Do write: {toc1 - tic1:0.4f} seconds")
 
     elif len(processed_ids) == 1:
@@ -151,9 +155,9 @@ if (len(taskids) == len(processed_ids)) or args.force:
             filename = str(processed_ids[0]) + '/B0' + str(b).zfill(2) + '/HI_image_cube' + str(c) + '.fits'
             try:
                 hdu = fits.open(filename)
-                print("\tFound cube {} for {} beam {:02}".format(c, t, b))
+                print("\tFound cube {} for {} beam {:02}".format(c, processed_ids, b))
             except FileNotFoundError:
-                print("\tNo data for beam {:02} in taskid {} covering field {}.".format(b, t, field))
+                print("\tNo data for beam {:02} in taskid {} covering field {}.".format(b, processed_ids, field))
                 continue
             header = hdu[0].header
             if b == beams[0]:
