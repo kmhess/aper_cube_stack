@@ -69,6 +69,7 @@ def main(template_im, beam, pb_root_dir='', output=''):
     d_new = np.ones((temp_header['NAXIS3'], temp_header['NAXIS2'], temp_header['NAXIS2']))
     d_beam_cube = d_new * cb_reprojected
     cb_reprojected = np.float32(d_beam_cube)
+    hdulist_pb.close()
 
     hdu = fits.PrimaryHDU(data=cb_reprojected, header=temp_header)
 
