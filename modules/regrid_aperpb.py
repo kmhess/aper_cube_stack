@@ -63,6 +63,7 @@ def main(template_im, beam, pb_root_dir='', output=''):
     hdulist_pb[0].header['CDELT2'] = (
                 hdulist_pb[0].header['CDELT2'] * get_cb_model_freq().to(u.Hz) / avg_cube_freq).value
 
+    print("\tRegridding Gaussian regression primary beam for beam {} to {}".format(beam, template_im))
     cb_reprojected, footprint = reproject_interp(hdulist_pb, WCS(temp_header).celestial, [temp_header['NAXIS2'],
                                                                                           temp_header['NAXIS2']])
     d_new = np.ones((temp_header['NAXIS3'], temp_header['NAXIS2'], temp_header['NAXIS2']))
