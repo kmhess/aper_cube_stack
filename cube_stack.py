@@ -1,6 +1,7 @@
 # Import default Python libraries
 from argparse import ArgumentParser, RawTextHelpFormatter
 import os
+import gc
 
 from astropy.coordinates import SkyCoord, SpectralCoord
 from astropy.io import fits, ascii
@@ -116,10 +117,11 @@ if (len(taskids) == len(processed_ids)) or args.force:
             weights = 1/rms**2
 
             # Weight cube, combine, and normalize data cubes
-            dataweight = data_all.transpose()*weights.transpose()
-            num = da.nansum(dataweight.transpose(), axis=0)
+            num = da.nansum(data_all.transpose() * weights.transpose(), axis=-1)
+            del data_all
+            gc.collect()
             denom = da.nansum(weights, axis=0)
-            combo_cube = (num.transpose()/denom).compute().transpose()
+            combo_cube = (num/denom).compute().transpose()
             # End counter
             toc = testtime.perf_counter()
             print(f"Do median: {toc - tic:0.4f} seconds")
