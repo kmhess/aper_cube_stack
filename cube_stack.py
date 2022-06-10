@@ -152,6 +152,7 @@ if (len(taskids) == len(processed_ids)) or args.force:
         # Assign the bary center based on the center of the pointing itself (always beam 0 saved in files)
         barycent_pos = SkyCoord(ra=entry['ra'], dec=entry['dec'], unit='deg')
 
+        time = None
         for b in beams:
             # Get info from the header
             filename = str(processed_ids[0]) + '/B0' + str(b).zfill(2) + '/HI_image_cube' + str(c) + '.fits'
@@ -162,7 +163,7 @@ if (len(taskids) == len(processed_ids)) or args.force:
                 print("\tNo data for beam {:02} in taskid {} covering field {}.".format(b, processed_ids, field))
                 continue
             header = hdu[0].header
-            if b == beams[0]:
+            if b == beams[0] or (not time):
                 time = Time(header['DATE-OBS'])
             # Build in a check if the header is already in BARYCENT!
             if hdu[0].header['SPECSYS'] == 'BARYCENT':
