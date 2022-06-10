@@ -59,51 +59,69 @@ taskids, processed_ids = get_taskids(field)
 for b in beams:
     data_all = []
     rms = []
-    for t in processed_ids:
-        # Check if noise.txt file is in place for the processed_ids:
-        if os.path.isfile(str(t) + "/B0" + str(b).zfill(2) + "/noise.txt"):
-            print("\tFound noise.txt file for taskid {}, beam {}, cube {}.".format(t, b, c))
-            noise_values = ascii.read(str(t) + "/B0" + str(b).zfill(2) + "/noise.txt")
-            skip_chan = noise_values['chan'][0]
-            n_chans = len(noise_values)
-            filename = str(t) + '/B0' + str(b).zfill(2) + '/HI_beam_cube' + str(c) + '.fits'
-            try:
-                data_all.append(fits.getdata(filename)[int(skip_chan):int(skip_chan + n_chans), :, :])
-                rms.append(noise_values['noise'])
-            except FileNotFoundError:
-                print("\tERROR: psf file for taskid {}, beam {}, cube {} hasn't been downloaded.".format(t, b, c))
-                print("\t\tExiting. Download appropriate psf cube from ALTA!")
-                exit()
-        else:
-            # Fill with nan values if the psf cube doesn't exist.
-            print("\tWARNING: noise values for taskid {}, beam {}, cube {} doesn't exist.".format(t, b, c))
-            if os.path.isfile(str(t) + "/B0" + str(b).zfill(2) + "/HI_image_cube" + str(c) + ".fits"):
-                print("\tWARNING: image cube DOES exist, not included in mosaic??")
+    if len(processed_ids) > 1:
+        for t in processed_ids:
+            # Check if noise.txt file is in place for the processed_ids:
+            if os.path.isfile(str(t) + "/B0" + str(b).zfill(2) + "/noise.txt"):
+                print("\tFound noise.txt file for taskid {}, beam {}, cube {}.".format(t, b, c))
+                noise_values = ascii.read(str(t) + "/B0" + str(b).zfill(2) + "/noise.txt")
+                skip_chan = noise_values['chan'][0]
+                n_chans = len(noise_values)
+                filename = str(t) + '/B0' + str(b).zfill(2) + '/HI_beam_cube' + str(c) + '.fits'
+                try:
+                    data_all.append(fits.getdata(filename)[int(skip_chan):int(skip_chan + n_chans), :, :])
+                    rms.append(noise_values['noise'])
+                except FileNotFoundError:
+                    print("\tERROR: psf file for taskid {}, beam {}, cube {} hasn't been downloaded.".format(t, b, c))
+                    print("\t\tExiting. Download appropriate psf cube from ALTA!")
+                    exit()
+            else:
+                # Fill with nan values if the psf cube doesn't exist.
+                print("\tWARNING: noise values for taskid {}, beam {}, cube {} doesn't exist.".format(t, b, c))
+                if os.path.isfile(str(t) + "/B0" + str(b).zfill(2) + "/HI_image_cube" + str(c) + ".fits"):
+                    print("\tWARNING: image cube DOES exist, not included in mosaic??")
 
-    # Get a template header
-    print("\tGet template header from {}".format(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits'))
-    header = fits.getheader(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits')
+        # Prepare data arrays
+        data_all = np.array(data_all)
+        rms = np.array(rms)
+        weights = 1 / rms ** 2
 
-    # Prepare data arrays
-    data_all = np.array(data_all)
-    rms = np.array(rms)
-    weights = 1 / rms ** 2
+        # Weight cube, combine, and normalize data cubes
+        tic = testtime.perf_counter()
+        # dataweight = data_all.transpose() * weights.transpose()
+        num = da.nansum(data_all.transpose() * weights.transpose(), axis=-1)
+        del data_all
+        gc.collect()
+        denom = da.nansum(weights, axis=0)
+        combo_cube = (num / denom).compute()
+        del denom
+        del num
+        gc.collect()
+        # End counter
+        toc = testtime.perf_counter()
+        print(f"Do median: {toc - tic:0.4f} seconds")
 
-    # Weight cube, combine, and normalize data cubes
-    tic = testtime.perf_counter()
-    # dataweight = data_all.transpose() * weights.transpose()
-    num = da.nansum(data_all.transpose() * weights.transpose(), axis=-1)
-    del data_all
-    gc.collect()
-    denom = da.nansum(weights, axis=0)
-    combo_cube = (num / denom).compute()
-    del denom
-    del num
-    gc.collect()
-    # End counter
-    toc = testtime.perf_counter()
-    print(f"Do median: {toc - tic:0.4f} seconds")
+        # Get a template header
+        print("\tGet template header from {}".format(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits'))
+        header = fits.getheader(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits')
 
-    hdu_new = fits.PrimaryHDU(data=combo_cube.transpose(), header=header)
-    hdu_new.writeto(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_psf.fits', overwrite=True)
-    print("\tFinished field {} beam {}.".format(field, b))
+        hdu_new = fits.PrimaryHDU(data=combo_cube.transpose(), header=header)
+        hdu_new.writeto(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_psf.fits', overwrite=True)
+        print("\tFinished field {} beam {}.".format(field, b))
+
+    elif len(processed_ids) == 1:
+        print("\tOnly one taskid.  Writing to a folder with the field naming scheme & barycent image header.")
+        filename = str(processed_ids[0]) + '/B0' + str(b).zfill(2) + '/HI_beam_cube' + str(c) + '.fits'
+        combo_cube = fits.getdata(filename)
+
+        # Get a template header
+        print("\tGet template header from {}".format(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits'))
+        header = fits.getheader(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits')
+
+        hdu_new = fits.PrimaryHDU(data=combo_cube, header=header)
+        hdu_new.writeto(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_psf.fits', overwrite=True)
+        print("\tFinished field {} beam {}.".format(field, b))
+
+    else:
+        print("\tNo data processed yet for this field: {}.".format(field))
+
