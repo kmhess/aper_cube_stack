@@ -104,6 +104,8 @@ for b in beams:
         # Get a template header
         print("\tGet template header from {}".format(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits'))
         header = fits.getheader(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits')
+        header['CRPIX1'] = 661.0
+        header['CRPIX2'] = 661.0
 
         hdu_new = fits.PrimaryHDU(data=combo_cube.transpose(), header=header)
         hdu_new.writeto(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_psf.fits', overwrite=True)
@@ -117,6 +119,8 @@ for b in beams:
         # Get a template header
         print("\tGet template header from {}".format(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits'))
         header = fits.getheader(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits')
+        header['CRPIX1'] = 661.0
+        header['CRPIX2'] = 661.0
 
         hdu_new = fits.PrimaryHDU(data=combo_cube, header=header)
         hdu_new.writeto(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_psf.fits', overwrite=True)
