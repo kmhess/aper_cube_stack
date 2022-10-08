@@ -61,6 +61,7 @@ cdelt3 = 0
 all_nan = True
 
 if (len(taskids) == len(processed_ids)) or args.force:
+    print("\tWill combine data for beams: {}".format(beams))
     print("\tTASKIDS: {}".format(taskids))
     print("\tPROCESSED TASKIDS: {}".format(processed_ids))
 
@@ -73,7 +74,7 @@ if (len(taskids) == len(processed_ids)) or args.force:
         barycent_pos = SkyCoord(ra=entry['ra'], dec=entry['dec'], unit='deg')
 
         # Find common spectrum across all beams for a field.
-        delta_chan, new_crval3, naxis2, naxis3 = get_common_spectrum(barycent_pos, processed_ids, c)
+        delta_chan, new_crval3, naxis2, naxis3 = get_common_spectrum(barycent_pos, processed_ids, beams, c)
 
         print("\tCreate barycentric corrected cubes for the specified beams.")
         for b in beams:
