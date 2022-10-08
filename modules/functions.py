@@ -49,15 +49,16 @@ def topo2bary_corr(beam_pos, time):
     return delta_crval3
 
 
-def get_common_spectrum(barycent_pos, taskids, c):
+def get_common_spectrum(barycent_pos, taskids, beams, c):
     """
     :param barycent_pos:
     :param taskids:
     :param c:
+    :param beams:
     :return:
     """
     print("\tAttempting to figure out common spectrum settings.")
-    beams = range(0, 40)
+    # beams = range(0, 40)
     # Calculate barycentric shifts for each taskid (must be same for all beams)
     delta_chan = []
     new_crval3 = []
@@ -69,10 +70,10 @@ def get_common_spectrum(barycent_pos, taskids, c):
         while (time[ii] == None) and (b < len(beams)):
 
             # Get info from the header
-            filename = str(t) + '/B0' + str(b).zfill(2) + '/HI_image_cube' + str(c) + '.fits'
+            filename = str(t) + '/B0' + str(beams[b]).zfill(2) + '/HI_image_cube' + str(c) + '.fits'
             try:
                 header = fits.getheader(filename)
-                print("\tFound beam {:02} cube {} for taskid {}".format(b, c, t))
+                print("\tFound beam {:02} cube {} for taskid {}".format(beams[b], c, t))
             except FileNotFoundError:
                 b += 1
                 continue
@@ -97,7 +98,7 @@ def get_common_spectrum(barycent_pos, taskids, c):
             new_crval3.append(bary_spec_coord.value)
             delta_chan.append(np.round(np.array(delta_crval3.value) / cdelt3))
 
-        if b == 40:
+        if b == len(beams):
             print("\tNo valid data for taskid {} !".format(t))
             new_crval3.append(np.nan)
             delta_chan.append(np.nan)
