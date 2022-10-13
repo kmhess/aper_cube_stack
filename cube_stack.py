@@ -96,7 +96,7 @@ if (len(taskids) == len(processed_ids)) or args.force:
                     rms.append(da.nanstd(da.array(data_all)[-1, :, :, :], axis=(1, 2)).compute())
                     # Write noise, weight as a function of channel to a text file for each cube.
                     ascii.write([list(range(int(j), int(j) + n_chans)), np.array(rms)[-1, :]],
-                                str(t) + '/B0' + str(b).zfill(2) + '/noise.txt',
+                                str(t) + '/B0' + str(b).zfill(2) + '/noise_cube' + str(c) + '.txt',
                                 names=['chan', 'noise'], overwrite=True)
                     all_nan = False
                     last_file = filename

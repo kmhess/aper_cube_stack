@@ -66,9 +66,9 @@ if (len(taskids) == len(processed_ids)) or args.force:
         if len(processed_ids) > 1:
             for t in processed_ids:
                 # Check if noise.txt file is in place for the processed_ids:
-                if os.path.isfile(str(t) + "/B0" + str(b).zfill(2) + "/noise.txt"):
-                    print("\tFound noise.txt file for taskid {}, beam {}, cube {}.".format(t, b, c))
-                    noise_values = ascii.read(str(t) + "/B0" + str(b).zfill(2) + "/noise.txt")
+                if os.path.isfile(str(t) + "/B0" + str(b).zfill(2) + "/noise_cube" + str(c) + ".txt"):
+                    print("\tFound noise_cube{}.txt file for taskid {}, beam {}.".format(c, t, b))
+                    noise_values = ascii.read(str(t) + "/B0" + str(b).zfill(2) + "/noise_cube" + str(c) + ".txt")
                     skip_chan = noise_values['chan'][0]
                     n_chans = len(noise_values)
                     filename = str(t) + '/B0' + str(b).zfill(2) + '/HI_beam_cube' + str(c) + '.fits'
