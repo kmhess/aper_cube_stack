@@ -27,6 +27,9 @@ def get_taskids(field):
     observations = Table.read(dir + '/../data/obscensus.csv', comment='#')
     processed = Table.read(dir + '/../data/pointings.dat', format='ascii')
 
+    observations['name'][observations['name']=='S2214+3130'] = 'M2214+3130'
+    processed['field'][processed['field']=='S2214+3130'] = 'M2214+3130'
+
     taskids = observations[observations['name'] == field]['taskID']
     processed_ids = unique(processed[processed['field'] == field], keys='0taskID')['0taskID']
 
@@ -103,6 +106,9 @@ def get_common_spectrum(barycent_pos, taskids, beams, c):
             new_crval3.append(np.nan)
             delta_chan.append(np.nan)
 
+    # Calculate optimal shift (to be added by Barbara)
+    
+            
     # Assumes these are the same for all original beams and at least one taskid, beam, cube combo will work.
     naxis2 = header['NAXIS2']
     naxis3 = header['NAXIS3']
@@ -113,12 +119,12 @@ def get_common_spectrum(barycent_pos, taskids, beams, c):
 # test = get_taskids('M1403+5324')
 # print(test)
 
-from astropy.time import Time
-sc = SkyCoord(ra=2.04884572000e2, dec=5.44064750000e1, unit='deg', frame='fk5')
-t = Time('2019-12-31T06:52:55.6')
-test = topo2bary_corr(sc, t)
-t2 = Time('2021-07-18T17:20:30.600')
-test2 = topo2bary_corr(sc, t2)
+# from astropy.time import Time
+# sc = SkyCoord(ra=2.04884572000e2, dec=5.44064750000e1, unit='deg', frame='fk5')
+# t = Time('2019-12-31T06:52:55.6')
+# test = topo2bary_corr(sc, t)
+# t2 = Time('2021-07-18T17:20:30.600')
+# test2 = topo2bary_corr(sc, t2)
 #
 # beam_pos = SkyCoord(ra=2.04884572000e2, dec=5.44064750000e1, unit='deg', frame='fk5')
 # obs = westerbork().get_itrs(obstime=Time('2019-12-31T06:52:55.6'))
@@ -129,3 +135,6 @@ test2 = topo2bary_corr(sc, t2)
 # #
 # print(spec_coord.with_observer_stationary_relative_to('icrs'))
 # print((spec_coord.with_observer_stationary_relative_to('icrs')-spec_coord)/1420e6*3e5)
+
+tid = get_taskids('M2214+3130')
+print(tid[0])
