@@ -112,24 +112,26 @@ def main(source, field, cube, pb_root_dir=''):
     ptgs = ptgs[dist < maxRad]
     dist = dist[dist < maxRad]
     
+    forgotten_beams = []
     if len(ptgs) > 0:
         indexes = np.argsort(dist)
         ptgs = ptgs[indexes]
         dist = dist[indexes]
 
         # Get the pb values at the location of the source for all beams where the contribution is greater than 25% closest beam.
-        pb_values = pb_weight(source['ra'],source['dec'], ptgs, cube, pb_root_dir=pb_root_dir)
+        pb_values = pb_weight(source['ra'], source['dec'], ptgs, cube, pb_root_dir=pb_root_dir)
         ptgs2 = ptgs[pb_values > 0.25*pb_values[0]]
         dist2 = dist[pb_values > 0.25*pb_values[0]]
         pb_values = pb_values[pb_values > 0.25*pb_values[0]]
 
         psf_cubes = [field + '/HI_B0{:02}_cube{}_spline_clean_image.fits'.format(b, cube) for b in ptgs2['beam']]
 
-        forgotten_beams = []
         for i in range(len(psf_cubes)-1, -1, -1):
             if not os.path.isfile(psf_cubes[i]):
                 forgotten_beams.append([source['name'][0], psf_cubes[i], i])
                 psf_cubes.pop(i)
+                ptgs2.remove_row(i)
+                pb_values = np.delete(pb_values, i)
 
         psf_per_chan = [get_psf_per_chan(source, p) for p in psf_cubes]
 
@@ -149,16 +151,22 @@ def main(source, field, cube, pb_root_dir=''):
         bmins = np.zeros(n_beams) - 99
         bpas = np.zeros(n_beams) - 99
         while (b < len(bmajs)) and (b < len(ptgs2)):
-            bmajs[b] = np.median(psf_per_chan[b]['BMAJ'])
-            bmins[b] = np.median(psf_per_chan[b]['BMIN'])
-            bpas[b] = np.median(psf_per_chan[b]['BPA'])
+            if os.path.isfile(psf_cubes[b]):
+                bmajs[b] = np.median(psf_per_chan[b]['BMAJ'])
+                bmins[b] = np.median(psf_per_chan[b]['BMIN'])
+                bpas[b] = np.median(psf_per_chan[b]['BPA'])
             b += 1
         psf_three_nearest = {'bmajs':','.join("{:.7f}".format(x) for x in bmajs), 'bmins':','.join("{:.7f}".format(x) for x in bmins), 
                              'bpas':','.join("{:.7f}".format(x) for x in bpas)}
 
     else:
-        print('This position has not been observed')
-        sys.exit()
+        print('This position has not been observed: {}'.format(source['name'][0]))
+        forgotten_beams.append([source['name'][0], 'This position has not been observed', 99])
+        psf_nearest = None
+        psf_weighted = None
+        psf_field_median = None
+        psf_three_nearest = None
+        # sys.exit()
 
     return psf_nearest, psf_weighted, psf_field_median, forgotten_beams, psf_three_nearest
 
@@ -197,11 +205,12 @@ if __name__ == '__main__':
 
         # psf_nearest, psf_weighted, psf_field_median, forgotten_fields = main(s, field, args.cube, pb_root_dir=args.pb_root_dir)
         psf_nearest, psf_weighted, psf_field_median, forgotten_beams, psf_3nearest= main(s_new, field, args.cube, pb_root_dir=args.pb_root_dir)
-        psf.update(psf_nearest)
-        psf.update(psf_weighted)
-        psf.update(psf_field_median)
-        psf.update(psf_3nearest)
-        out_catalog.append(psf)
+        if psf_nearest != None:
+            psf.update(psf_nearest)
+            psf.update(psf_weighted)
+            psf.update(psf_field_median)
+            psf.update(psf_3nearest)
+            out_catalog.append(psf)
         if len(forgotten_beams) > 0:
             forgotten_beams_all.append(forgotten_beams)
         i += 1
