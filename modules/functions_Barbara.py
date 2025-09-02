@@ -228,7 +228,7 @@ def get_common_spectrum_barbara(barycent_pos, taskids, beams, c, d):
 
     sigma_dif_all = np.zeros(len(ind_need), dtype=float)
     mean_dif_all = np.zeros(len(ind_need), dtype=float)
-    dif_freq_mid = np.zeros(len(ind_need), dtype=float)
+    dif_freq_mid = np.zeros(len(ind_need), dtype=object)
     delta_chan_round = np.zeros((len(ind_need),N_obs), dtype=float)
 
     for j in range(len(ind_need)):
