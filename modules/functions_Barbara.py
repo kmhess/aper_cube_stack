@@ -54,12 +54,13 @@ def topo2bary_corr(beam_pos, time):
     return delta_crval3
 
 
-def get_common_spectrum(barycent_pos, taskids, beams, c):
+def get_common_spectrum(barycent_pos, taskids, beams, c, d):
     """
     :param barycent_pos:
     :param taskids:
-    :param c:
     :param beams:
+    :param c:
+    :param d:
     :return:
     """
     print("\tAttempting to figure out common spectrum settings.")
@@ -75,7 +76,7 @@ def get_common_spectrum(barycent_pos, taskids, beams, c):
         while (time[ii] == None) and (b < len(beams)):
 
             # Get info from the header
-            filename = str(t) + '/B0' + str(beams[b]).zfill(2) + '/HI_image_cube' + str(c) + '.fits'
+            filename = d + '/' + str(t) + '/B0' + str(beams[b]).zfill(2) + '/HI_image_cube' + str(c) + '.fits'
             try:
                 header = fits.getheader(filename)
                 print("\tFound beam {:02} cube {} for taskid {}".format(beams[b], c, t))
@@ -133,12 +134,13 @@ def spec_res_n(n, n_chan, del_f_mid, cdelt3s, cdelt3_fin):
     return np.sqrt(cdelt3_fin**2 + (2 * np.sqrt(2 * np.log(2)) * new_sig)**2) 
 
 
-def get_common_spectrum_barbara(barycent_pos, taskids, beams, c):
+def get_common_spectrum_barbara(barycent_pos, taskids, beams, c, d):
     """
     :param barycent_pos:
     :param taskids:
-    :param c:
     :param beams:
+    :param c:
+    :param d:
     :return:
     """
     print("\tAttempting to figure out common spectrum settings.")
@@ -156,7 +158,7 @@ def get_common_spectrum_barbara(barycent_pos, taskids, beams, c):
         while (time[ii] == None) and (b < len(beams)):
 
             # Get info from the header
-            filename = str(t) + '/B0' + str(beams[b]).zfill(2) + '/HI_image_cube' + str(c) + '.fits'
+            filename = d + '/' + str(t) + '/B0' + str(beams[b]).zfill(2) + '/HI_image_cube' + str(c) + '.fits'
             
             try:
                 header = fits.getheader(filename)
