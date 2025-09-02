@@ -39,6 +39,9 @@ parser.add_argument('-b', '--beams', default='34',
 parser.add_argument('-c', '--cubes', default='2',
                     help='Specify the cubes on which to do source finding (default: %(default)s).')
 
+parser.add_argument('-d', '--directory', default='.', required=False,
+                    help='Specify the directory where taskid/field folders live containing the data (default: %(default)s).')
+
 parser.add_argument('-force', '--force',
                     help='Force creation of barycent corrected cubes even if not all observations have been processed.',
                     action='store_true')
@@ -48,6 +51,7 @@ parser.add_argument('-force', '--force',
 # Parse the arguments above
 args = parser.parse_args()
 
+d = args.directory
 field = args.field
 cubes = [int(c) for c in args.cubes.split(',')]
 if '-' in args.beams:
@@ -81,9 +85,9 @@ if (len(taskids) == len(processed_ids)) or args.force:
         
         # if use_Barbara_func:
         if c == 3:
-            delta_chan, ref_index, new_crval3_ref_obs, spec_res_mid_axis, bary_fin_cdelt3, naxis2, naxis3, a_lin_param, b_lin_param = get_common_spectrum_barbara(barycent_pos, processed_ids, beams, c)
+            delta_chan, ref_index, new_crval3_ref_obs, spec_res_mid_axis, bary_fin_cdelt3, naxis2, naxis3, a_lin_param, b_lin_param = get_common_spectrum_barbara(barycent_pos, processed_ids, beams, c, d)
         else:
-            delta_chan, new_crval3, naxis2, naxis3 = get_common_spectrum(barycent_pos, processed_ids, beams, c)
+            delta_chan, new_crval3, naxis2, naxis3 = get_common_spectrum(barycent_pos, processed_ids, beams, c, d)
             
 
         print("\tCreate barycentric corrected cubes for the specified beams.")
@@ -101,12 +105,12 @@ if (len(taskids) == len(processed_ids)) or args.force:
             # Calculate noise, weight for each cube
             for j, t in zip(skip_chans, taskids):
                 try:
-                    filename = str(t) + '/B0' + str(b).zfill(2) + '/HI_image_cube' + str(c) + '.fits'
+                    filename = d + '/' + str(t) + '/B0' + str(b).zfill(2) + '/HI_image_cube' + str(c) + '.fits'
                     data_all.append(fits.getdata(filename)[int(j):int(j+n_chans), :, :])
                     rms.append(da.nanstd(da.array(data_all)[-1, :, :, :], axis=(1, 2)).compute())
                     # Write noise, weight as a function of channel to a text file for each cube.
                     ascii.write([list(range(int(j), int(j) + n_chans)), np.array(rms)[-1, :]],
-                                str(t) + '/B0' + str(b).zfill(2) + '/noise_cube' + str(c) + '.txt',
+                                filename[:19] + 'noise_cube' + str(c) + '.txt',
                                 names=['chan', 'noise'], overwrite=True)
                     all_nan = False
                     last_file = filename
@@ -138,8 +142,8 @@ if (len(taskids) == len(processed_ids)) or args.force:
             print(f"Do median: {toc - tic:0.4f} seconds")
 
             # Make a new directory if it doesn't already exist:
-            if not os.path.isdir(field):
-                os.system('mkdir {}'.format(field))
+            if not os.path.isdir(d + '/' + field):
+                os.system('mkdir {}/{}'.format(d,field))
 
             # Write new cube & save in a logical place
             # if use_Barbara_func:
@@ -158,7 +162,7 @@ if (len(taskids) == len(processed_ids)) or args.force:
             header['CTYPE3'] = 'FREQ'
             hdu_new = fits.PrimaryHDU(data=combo_cube, header=header)
             tic1 = testtime.perf_counter()
-            hdu_new.writeto(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits', overwrite=True)
+            hdu_new.writeto(d + '/' + field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits', overwrite=True)
             toc1 = testtime.perf_counter()
             print("\tFinished field {} beam {}.".format(field, b))
             print(f"Do write: {toc1 - tic1:0.4f} seconds")
@@ -176,7 +180,7 @@ if (len(taskids) == len(processed_ids)) or args.force:
         time = None
         for b in beams:
             # Get info from the header
-            filename = str(processed_ids[0]) + '/B0' + str(b).zfill(2) + '/HI_image_cube' + str(c) + '.fits'
+            filename = str(d + '/' + processed_ids[0]) + '/B0' + str(b).zfill(2) + '/HI_image_cube' + str(c) + '.fits'
             try:
                 hdu = fits.open(filename)
                 print("\tFound cube {} for {} beam {:02}".format(c, processed_ids, b))
@@ -190,10 +194,10 @@ if (len(taskids) == len(processed_ids)) or args.force:
             if hdu[0].header['SPECSYS'] == 'BARYCENT':
                 print("\tCube already in barycentric reference frame, continuing.")
                 # Make a new directory if it doesn't already exist:
-                if not os.path.isdir(field):
-                    os.system('mkdir {}'.format(field))
-                    os.system('cp ' + filename + ' ' + field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) +
-                              '_image.fits')
+                if not os.path.isdir(d + '/' + field):
+                    os.system('mkdir {}/{}'.format(d, field))
+                    os.system('cp ' + filename + ' ' + d + '/' + field + '/HI_B0' + str(b).zfill(2) + 
+                              '_cube' + str(c) + '_image.fits')
             else:
                 print("\tAssuming cube is in topecentric reference frame; transforming to barycentric")
                 # Calculate barycentric correction
@@ -205,10 +209,10 @@ if (len(taskids) == len(processed_ids)) or args.force:
                 header['CTYPE3'] = 'FREQ'
 
                 if not os.path.isdir(field):
-                    os.system('mkdir {}'.format(field))
+                    os.system('mkdir {}/{}'.format(d, field))
                 hdu_new = fits.PrimaryHDU(data=hdu[0].data, header=header)
                 tic1 = testtime.perf_counter()
-                hdu_new.writeto(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits', overwrite=True)
+                hdu_new.writeto(d + '/' + field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits', overwrite=True)
                 toc1 = testtime.perf_counter()
                 print(f"Do write: {toc1 - tic1:0.4f} seconds")
             hdu.close()
