@@ -3,6 +3,7 @@ import os
 from astropy.coordinates import SkyCoord, SpectralCoord
 from astropy.io import fits
 from astropy.table import Table, unique
+from astropy.time import Time
 import astropy.units as u
 from itertools import product
 import numpy as np
