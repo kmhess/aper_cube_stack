@@ -1,0 +1,4 @@
+astropy>=5.0.1
+dask>=2021.11.1
+numpy>=1.20.2
+reproject>=0.7.1
