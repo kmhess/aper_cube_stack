@@ -180,7 +180,7 @@ if (len(taskids) == len(processed_ids)) or args.force:
         time = None
         for b in beams:
             # Get info from the header
-            filename = str(d + '/' + processed_ids[0]) + '/B0' + str(b).zfill(2) + '/HI_image_cube' + str(c) + '.fits'
+            filename = d + '/' + str(processed_ids[0]) + '/B0' + str(b).zfill(2) + '/HI_image_cube' + str(c) + '.fits'
             try:
                 hdu = fits.open(filename)
                 print("\tFound cube {} for {} beam {:02}".format(c, processed_ids, b))
