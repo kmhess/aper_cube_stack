@@ -32,6 +32,9 @@ parser.add_argument('-b', '--beams', default='34',
 parser.add_argument('-c', '--cubes', default='2',
                     help='Specify the cubes on which to do source finding (default: %(default)s).')
 
+parser.add_argument('-d', '--directory', default='.', required=False,
+                    help='Specify the directory where taskid/field folders live containing the data (default: %(default)s).')
+
 parser.add_argument('-force', '--force',
                     help='Force creation of barycent corrected cubes even if not all observations have been processed.',
                     action='store_true')
@@ -41,6 +44,7 @@ parser.add_argument('-force', '--force',
 # Parse the arguments above
 args = parser.parse_args()
 
+d = args.directory
 field = args.field
 cubes = [int(c) for c in args.cubes.split(',')]
 if '-' in args.beams:
@@ -66,12 +70,12 @@ if (len(taskids) == len(processed_ids)) or args.force:
         if len(processed_ids) > 1:
             for t in processed_ids:
                 # Check if noise.txt file is in place for the processed_ids:
-                if os.path.isfile(str(t) + "/B0" + str(b).zfill(2) + "/noise_cube" + str(c) + ".txt"):
+                if os.path.isfile(d + '/' + str(t) + "/B0" + str(b).zfill(2) + "/noise_cube" + str(c) + ".txt"):
                     print("\tFound noise_cube{}.txt file for taskid {}, beam {}.".format(c, t, b))
-                    noise_values = ascii.read(str(t) + "/B0" + str(b).zfill(2) + "/noise_cube" + str(c) + ".txt")
+                    noise_values = ascii.read(d + '/' + str(t) + "/B0" + str(b).zfill(2) + "/noise_cube" + str(c) + ".txt")
                     skip_chan = noise_values['chan'][0]
                     n_chans = len(noise_values)
-                    filename = str(t) + '/B0' + str(b).zfill(2) + '/HI_beam_cube' + str(c) + '.fits'
+                    filename = d + '/' + str(t) + '/B0' + str(b).zfill(2) + '/HI_beam_cube' + str(c) + '.fits'
                     try:
                         data_all.append(fits.getdata(filename)[int(skip_chan):int(skip_chan + n_chans), :, :])
                         rms.append(noise_values['noise'])
@@ -82,7 +86,7 @@ if (len(taskids) == len(processed_ids)) or args.force:
                 else:
                     # Fill with nan values if the psf cube doesn't exist.
                     print("\tWARNING: noise values for taskid {}, beam {}, cube {} doesn't exist.".format(t, b, c))
-                    if os.path.isfile(str(t) + "/B0" + str(b).zfill(2) + "/HI_image_cube" + str(c) + ".fits"):
+                    if os.path.isfile(d + '/' + str(t) + "/B0" + str(b).zfill(2) + "/HI_image_cube" + str(c) + ".fits"):
                         print("\tWARNING: image cube DOES exist, not included in mosaic??")
 
             # Prepare data arrays
@@ -106,13 +110,13 @@ if (len(taskids) == len(processed_ids)) or args.force:
             print(f"Do median: {toc - tic:0.4f} seconds")
 
             # Get a template header
-            print("\tGet template header from {}".format(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits'))
-            header = fits.getheader(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits')
+            print("\tGet template header from {}".format(d + '/' + field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits'))
+            header = fits.getheader(d + '/' + field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits')
             header['CRPIX1'] = 661.0
             header['CRPIX2'] = 661.0
 
             hdu_new = fits.PrimaryHDU(data=combo_cube.transpose(), header=header)
-            hdu_new.writeto(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_psf.fits', overwrite=True)
+            hdu_new.writeto(d + '/' + field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_psf.fits', overwrite=True)
             print("\tFinished field {} beam {}.".format(field, b))
 
         elif len(processed_ids) == 1:
@@ -121,13 +125,13 @@ if (len(taskids) == len(processed_ids)) or args.force:
             combo_cube = fits.getdata(filename)
 
             # Get a template header
-            print("\tGet template header from {}".format(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits'))
-            header = fits.getheader(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits')
+            print("\tGet template header from {}".format(d + '/' + field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits'))
+            header = fits.getheader(d + '/' + field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_image.fits')
             header['CRPIX1'] = 661.0
             header['CRPIX2'] = 661.0
 
             hdu_new = fits.PrimaryHDU(data=combo_cube, header=header)
-            hdu_new.writeto(field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_psf.fits', overwrite=True)
+            hdu_new.writeto(d + '/' + field + '/HI_B0' + str(b).zfill(2) + '_cube' + str(c) + '_psf.fits', overwrite=True)
             print("\tFinished field {} beam {}.".format(field, b))
 
         else:
