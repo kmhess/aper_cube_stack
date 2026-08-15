@@ -121,7 +121,7 @@ if (len(taskids) == len(processed_ids)) or args.force:
 
         elif len(processed_ids) == 1:
             print("\tOnly one taskid.  Writing to a folder with the field naming scheme & barycent image header.")
-            filename = str(processed_ids[0]) + '/B0' + str(b).zfill(2) + '/HI_beam_cube' + str(c) + '.fits'
+            filename = d + '/' + str(processed_ids[0]) + '/B0' + str(b).zfill(2) + '/HI_beam_cube' + str(c) + '.fits'
             combo_cube = fits.getdata(filename)
 
             # Get a template header
