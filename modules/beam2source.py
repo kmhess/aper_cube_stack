@@ -103,7 +103,7 @@ def main(source, field, cube, ptgs, catalog_file, data_dir='', pb_root_dir=''):
     dist = np.sqrt((source['ra'] - ptgs['RA'])**2 * fac * fac + (source['dec'] - ptgs['Dec'])**2)
 
     # The smallest subset of pointings.dat within maxRad of the target galaxy and the correct field:
-    maxRad = 0.5
+    maxRad = 0.7
     ptgs = ptgs[dist < maxRad]
     dist = dist[dist < maxRad]
     
@@ -113,11 +113,11 @@ def main(source, field, cube, ptgs, catalog_file, data_dir='', pb_root_dir=''):
         ptgs = ptgs[indexes]
         dist = dist[indexes]
 
-        # Get the pb values at the location of the source for all beams where the contribution is greater than 25% closest beam.
+        # Get the pb values at the location of the source for all beams where the contribution is greater than 10% closest beam.
         pb_values = pb_weight(source['ra'], source['dec'], ptgs, cube, pb_root_dir=pb_root_dir)
-        ptgs2 = ptgs[pb_values > 0.25*pb_values[0]]
-        dist2 = dist[pb_values > 0.25*pb_values[0]]
-        pb_values = pb_values[pb_values > 0.25*pb_values[0]]
+        ptgs2 = ptgs[pb_values > 0.10*pb_values[0]]
+        dist2 = dist[pb_values > 0.10*pb_values[0]]
+        pb_values = pb_values[pb_values > 0.10*pb_values[0]]
 
         end_name = 'image.fits'
         if 'smooth' in catalog_file:
