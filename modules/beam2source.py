@@ -75,16 +75,34 @@ def pb_weight(ra, dec, pointing, cube, pb_root_dir=''):
 
 def get_psf_per_chan(source, im_cube):
 
-    psf_hdu = fits.open(im_cube)
-    if len(psf_hdu[1].data) == len(psf_hdu[0].data[:, 0, 0]):
-        # Assumes the margin of the cubelets is always 10 from SoFiA!!
-        z1 = np.max([0, source['z_min']-10])
-        z2 = np.min([source['z_max']+10, z1+len(psf_hdu[1].data)])
-        psf_chans = psf_hdu[1].data[z1:z2+1]
+    textfile = im_cube.split('_spline')[0]
+    if 'smooth' in im_cube:
+        textfile += '_smooth.txt'
+    else:
+        textfile += '.txt'
+    if os.path.isfile(textfile):
+        psf_text = Table.read(textfile, format='ascii', names=['CHAN','BMAJ','BMIN','BPA'])
+        if len(psf_text) > 1000:  # Cheap check!!
+            # Assumes the margin of the cubelets is always 10 from SoFiA!!
+            z1 = np.max([0, source['z_min']-10])
+            z2 = np.min([source['z_max']+10, z1+len(psf_text)])
+            psf_chans = psf_text[z1:z2+1]
+        else:
+            psf_chans = None
+            print("[BEAM2SOURCE] Need better chan code for {}".format(textfile))
+    elif os.path.isfile(im_cube):
+        psf_hdu = fits.open(im_cube)
+        if len(psf_hdu[1].data) == len(psf_hdu[0].data[:, 0, 0]):
+            # Assumes the margin of the cubelets is always 10 from SoFiA!!
+            z1 = np.max([0, source['z_min']-10])
+            z2 = np.min([source['z_max']+10, z1+len(psf_hdu[1].data)])
+            psf_chans = psf_hdu[1].data[z1:z2+1]
+        else:
+            psf_chans = None
+            print("[BEAM2SOURCE] Need better chan code for {}".format(im_cube))
+        psf_hdu.close()
     else:
         psf_chans = None
-        print("[BEAM2SOURCE] Need better chan code for {}".format(im_cube))
-    psf_hdu.close()
 
     return psf_chans
 
@@ -120,14 +138,18 @@ def main(source, field, cube, ptgs, catalog_file, data_dir='', pb_root_dir=''):
         pb_values = pb_values[pb_values > 0.10*pb_values[0]]
 
         end_name = 'image.fits'
+        end_name2 = '.txt'
         if 'smooth' in catalog_file:
             end_name = 'smooth_image.fits'
+            end_name2 = '_smooth.txt'
         psf_cubes = [data_dir + '/' + field + '/HI_B0{:02}_cube{}_spline_clean_{}'.format(b, cube, end_name) for b in ptgs2['beam']]
+        beam_text_files = [data_dir + '/' + field + '/HI_B0{:02}_cube{}{}'.format(b, cube, end_name2) for b in ptgs2['beam']]
 
         for i in range(len(psf_cubes)-1, -1, -1):
-            if not os.path.isfile(psf_cubes[i]):
+            if not os.path.isfile(psf_cubes[i]) and not os.path.isfile(beam_text_files[i]):
                 forgotten_beams.append([source['name'][0], psf_cubes[i], i])
                 psf_cubes.pop(i)
+                beam_text_files.pop(i)
                 ptgs2.remove_row(i)
                 pb_values = np.delete(pb_values, i)
 
